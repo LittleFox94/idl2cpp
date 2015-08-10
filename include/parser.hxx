@@ -1,8 +1,10 @@
 #ifndef _PARSER_HXX_INCLUDED
 #define _PARSER_HXX_INCLUDED
 
-#include <vector>
+#include <unordered_map>
+#include <memory>
 #include <string>
+
 #include "message.hxx"
 #include "type.hxx"
 
@@ -10,11 +12,11 @@ namespace idl2cpp {
     class Parser {
         
         public:
-            Parser(const std::string idlCode);
+            Parser(std::string const & idlCode);
             std::string toCode() const;
 
-            Message* getMessage(std::string name);
-            Type* getType(std::string name);
+            Message * getMessage(std::string const & name);
+            Type * getType(std::string const & name);
 
         private:
             enum class ParseState {
@@ -22,11 +24,11 @@ namespace idl2cpp {
                 MessageDefinition,
                 TypeDefinition,
             };
-            
-            std::vector<Message*> mMessages;
-            std::vector<Type*> mTypes;
 
-            void initTypes();
+            std::unordered_map<std::string, std::unique_ptr<Type>> initTypes();
+            
+            std::unordered_map<std::string, std::unique_ptr<Message>> mMessages;
+            std::unordered_map<std::string, std::unique_ptr<Type>> mTypes;
     };
 }
 

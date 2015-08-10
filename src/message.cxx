@@ -11,19 +11,19 @@ namespace idl2cpp {
     std::string Message::toCode() {
         std::stringstream code;
 
-        code << "typedef struct {" << std::endl;
+        code << "typedef struct {\n";
 
         for(auto && attribute : mAttributes) {
             code << "    ";
             code << attribute->getType()->getCodeName() << " ";
-            code << attribute->getName() << ";" << std::endl;
+            code << attribute->getName() << ";\n";
         }
 
-        code << "} MESSAGE_STRUCTURE_" << mName << ";" << std::endl;
+        code << "} MESSAGE_STRUCTURE_" << mName << ";\n";
         return code.str();
     }
 
     void Message::addAttribute(std::string name, Type* type) {
-        mAttributes.push_back(new Attribute(mParser, name, type));
+        mAttributes.push_back(std::unique_ptr<Attribute>(new Attribute(mParser, name, type)));
     }
 }

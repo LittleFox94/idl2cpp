@@ -4,7 +4,7 @@
 #include <string>
 
 namespace idl2cpp {
-    std::string trim(std::string str);
+    std::string trim(std::string const & str);
 }
 
 #endif
