@@ -15,4 +15,6 @@ target_compile_features(idl2cpp
     PRIVATE
         cxx_auto_type
         cxx_range_for
+        cxx_nullptr
+        cxx_strong_enums
 )
