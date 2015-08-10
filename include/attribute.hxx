@@ -9,7 +9,7 @@ namespace idl2cpp {
 
     class Attribute {
         public:
-            Attribute(Parser* parser, std::string name, Type* type);
+            Attribute(Parser* parser, std::string const & name, Type* type);
 
             std::string toCode();
             std::string getName() { return mName; }

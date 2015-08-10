@@ -1,7 +1,9 @@
 #ifndef _MESSAGE_HXX_INCLUDED
 #define _MESSAGE_HXX_INCLUDED
 
+#include <memory>
 #include <string>
+
 #include "attribute.hxx"
 
 namespace idl2cpp {
@@ -21,14 +23,14 @@ namespace idl2cpp {
             std::string getName() { return mName; }
             std::string getBaseName() { return mBaseName; }
             void setBaseName(std::string baseName) { mBaseName = baseName; }
-            std::vector<Attribute*> getAttributes() { return mAttributes; }
+            std::vector<std::unique_ptr<Attribute>> & getAttributes() { return mAttributes; }
             void addAttribute(std::string name, Type* type);
 
         private:
             MessageType mType;
             std::string mName;
             std::string mBaseName;
-            std::vector<Attribute*> mAttributes;
+            std::vector<std::unique_ptr<Attribute>> mAttributes;
             Parser* mParser;
     };
 }

@@ -1,39 +1,39 @@
 #include "../include/parser.hxx"
 #include "../include/strutil.hxx"
 #include "../include/message.hxx"
+
+#include <algorithm>
 #include <sstream>
 #include <iostream>
 
 namespace idl2cpp {
-    Parser::Parser(std::string idlCode) {
-        initTypes();
-
+    Parser::Parser(std::string const & idlCode)
+        : mTypes(initTypes())
+    {
         std::stringstream stream(idlCode);
 
         Parser::ParseState state = Parser::ParseState::None;
         int linenumber = 0;
 
-        while(!stream.eof()) {
-            linenumber++;
+        std::string line;
 
-            char buffer[1024];
-            stream.getline(buffer, 1024);
-            std::string line(buffer);
+        std::unique_ptr<Message> newMessage;
+        std::unique_ptr<Type> newType;
+
+        while(std::getline(stream, line)) {
+            ++linenumber;
             line = trim(line);
-
-            Message* newMessage;
-            Type* newType;
 
             if(line == "") {
                 switch(state) {
                     case Parser::ParseState::MessageDefinition:
                         {
-                            mMessages.push_back(newMessage);
+                            mMessages[newMessage->getName()] = std::move(newMessage);
                         }
                         break;
                     case Parser::ParseState::TypeDefinition:
                         {
-                            mTypes.push_back(newType);
+                            mTypes[newType->getName()] = std::move(newType);
                         }
                         break;
                 }
@@ -50,7 +50,7 @@ namespace idl2cpp {
 
                         if(keyword == "message" || keyword == "base") {
                             state = Parser::ParseState::MessageDefinition;
-                            newMessage = new Message(this, keyword == "base" ? MessageType::BaseOnly : MessageType::Message, name);
+                            newMessage.reset(new Message(this, keyword == "base" ? MessageType::BaseOnly : MessageType::Message, name));
                         }
                     }
                     break;
@@ -65,7 +65,7 @@ namespace idl2cpp {
                         else {
                             Type* type = getType(keyword);
 
-                            if(type == 0) {
+                            if(!type) {
                                 std::cerr << "Unknown type \"" << keyword << "\" on line " << linenumber << "!" << std::endl;
                                 exit(-1);
                             }
@@ -81,57 +81,71 @@ namespace idl2cpp {
                     break;
             }
         }
+
+        switch(state) {
+            case Parser::ParseState::MessageDefinition:
+                {
+                    mMessages[newMessage->getName()] = std::move(newMessage);
+                }
+                break;
+            case Parser::ParseState::TypeDefinition:
+                {
+                    mTypes[newType->getName()] = std::move(newType);
+                }
+                break;
+        }
     }
 
     std::string Parser::toCode() const {
         std::stringstream code;
 
-        code << "#ifndef __CPP_NETWORK_USER_HEADER_INCLUDED" << std::endl
-             << "#define __CPP_NETWORK_USER_HEADER_INCLUDED" << std::endl
-             << std::endl;
+        code << "#ifndef __CPP_NETWORK_USER_HEADER_INCLUDED\n"
+                "#define __CPP_NETWORK_USER_HEADER_INCLUDED\n\n";
 
         for (auto && message : mMessages) {
-            if(message->getType() == MessageType::Message) {
-                code << message->toCode() << std::endl;
+            if (message.second->getType() == MessageType::Message) {
+                code << message.second->toCode() << "\n";
             }
         }
 
-        code << "#endif" << std::endl;
+        code << "#endif\n";
 
         return code.str();
     }
 
-    void Parser::initTypes() {
-        mTypes.push_back(new Type(this, "int8_t",   "int8_t"));
-        mTypes.push_back(new Type(this, "int16_t",  "int16_t"));
-        mTypes.push_back(new Type(this, "int32_t",  "int32_t"));
-        mTypes.push_back(new Type(this, "int64_t",  "int64_t"));
-        mTypes.push_back(new Type(this, "uint8_t",  "uint8_t"));
-        mTypes.push_back(new Type(this, "uint16_t", "uint16_t"));
-        mTypes.push_back(new Type(this, "uint32_t", "uint32_t"));
-        mTypes.push_back(new Type(this, "uint64_t", "uint64_t"));
-        mTypes.push_back(new Type(this, "cstring",  "std::string"));
-        mTypes.push_back(new Type(this, "string",   "std::string"));
-        mTypes.push_back(new Type(this, "boolean",  "bool"));
+    Type* Parser::getType(std::string const & name)
+    {
+        auto it = mTypes.find(name);
+        if (it != mTypes.end())
+            return it->second.get();
+
+        return nullptr;
     }
 
-    Type* Parser::getType(std::string name) {
-        for(auto && type : mTypes) {
-            if(type->getName() == name) {
-                return type;
-            }
-        }
-
-        return 0;
+    std::unordered_map<std::string, std::unique_ptr<Type>> Parser::initTypes()
+    {
+        std::unordered_map<std::string, std::unique_ptr<Type>> types;
+#define TYPE(t,a) types[t] = std::unique_ptr<Type> { new Type { this, t, a } }
+        TYPE("int8_t", "int8_t");
+        TYPE("int16_t", "int16_t");
+        TYPE("int32_t", "int32_t");
+        TYPE("int64_t", "int64_t");
+        TYPE("uint8_t", "uint8_t");
+        TYPE("uint16_t", "uint16_t");
+        TYPE("uint32_t", "uint32_t");
+        TYPE("uint64_t", "uint64_t");
+        TYPE("cstring", "std::string");
+        TYPE("string", "std::string");
+        TYPE("boolean", "bool");
+#undef TYPE
+        return types;
     }
 
-    Message* Parser::getMessage(std::string name) {
-        for(auto && message : mMessages) {
-            if(message->getName() == name) {
-                return message;
-            }
-        }
+    Message* Parser::getMessage(std::string const & name) {
+        auto it = mMessages.find(name);
+        if (it != mMessages.end())
+            return it->second.get();
 
-        return 0;
+        return nullptr;
     }
 }
